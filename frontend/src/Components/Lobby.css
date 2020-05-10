@@ -1,0 +1,22 @@
+.rooms-list {
+  display: flex;
+  list-style: none;
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: space-around;
+  padding: 0;
+}
+
+.rooms-list__room {
+  width: 90%;
+  height: 50px;
+  border-radius: 10px;
+  border: 1px solid red;
+  margin-bottom: 10px;
+}
+
+@media only screen and (min-width: 768px) {
+  .rooms-list__room {
+    width: 45%;
+  }
+}
