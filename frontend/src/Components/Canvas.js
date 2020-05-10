@@ -1,19 +1,22 @@
-import React, { useRef } from 'react';
-
-const midPointBtw = (p1, p2) => {
-  return {
-    x: p1.x + (p2.x - p1.x) / 2,
-    y: p1.y + (p2.y - p1.y) / 2
-  }
+import React, { useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min)) + min;
 }
-
-
-const Canvas = ({width, height}) => {
+const Canvas = forwardRef(({width, height, onChange}, ref) => {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
-  const moving = useRef(false);
-  const points = useRef([]);
-  const lines = useRef([]);
+  const lines = useRef([]); 
+
+  useEffect(() => {
+    const ctx = canvasRef.current.getContext('2d');
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';  
+  }, []);
+
+  const addLine = (x, y, color = 'red', width = 5, start) => {
+    lines.current.push({x, y, color, width, start})
+    onChange(lines.current[lines.current.length-1]);
+  } 
 
   const getPosition = e => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -35,58 +38,70 @@ const Canvas = ({width, height}) => {
     }
   }
 
-  const handleDrawStart = (e) => {
-    const ctx = canvasRef.current.getContext('2d');
-    
-    const {x, y} = getPosition(e);
-
-    ctx.lineJoin = 'round';
-    ctx.lineCap  = 'round';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-
-    drawing.current = true;
-    
-    points.current.push(getPosition(e));
-  }
-  
-  const handleDrawMove = (e ) => {
-    if (!drawing.current) return;
+  const reDraw = () => {
     const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+    for (let i = 0; i < lines.current.length ; i++) {
+      const line = lines.current[i];
+      ctx.lineWidth = line.width;
+      ctx.strokeStyle = line.color;
+      ctx.beginPath(); 
+
+      if (line.start) {
+        ctx.moveTo(line.x, line.y);   
+      } else {
+        ctx.moveTo(lines.current[i-1].x, lines.current[i-1].y);   
+      }
+      ctx.lineTo(line.x, line.y);
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+
+  const handleDrawStart = (e) => {
+    e.preventDefault();
     const {x, y} = getPosition(e);
 
-    ctx.lineTo(x, y);
-    ctx.stroke();
+    drawing.current = true;
 
-    moving.current = true;
+    addLine(x, y, null, null, true);
+    reDraw();
+  }
+  
+  const handleDrawMove = (e ) => {
+    e.preventDefault();
+    if (!drawing.current) return;
+    const {x, y} = getPosition(e);
+    addLine(x, y);
+    reDraw();
   }
 
   const handleDrawEnd = (e) => {
-    if (drawing.current) {
-      drawing.current = false;
-      if (moving.current) {
-        moving.current = false
-      } else {
-        const ctx = canvasRef.current.getContext('2d'); 
-        const {x, y} = getPosition(e);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-    }
+    drawing.current = false;
   }
+
+  useImperativeHandle(ref, () => ({  
+    loadLine(line) {
+      lines.current.push(line)
+      reDraw();
+    } 
+  }))
 
   return <canvas 
     ref={canvasRef} 
     width={width} 
     height={height} 
-    style={{border: '1px solid red'}}
+    style={{border: '1px solid red', touchAction: 'none'}}
     onMouseDown={handleDrawStart}
     onMouseMove={handleDrawMove}
     onMouseUp={handleDrawEnd}
+    onMouseLeave={() => drawing.current = false}
+    onTouchStart={handleDrawStart}
+    onTouchMove={handleDrawMove}
+    onTouchEnd={handleDrawEnd}
+    onTouchCancel={handleDrawEnd}
   ></canvas>
-}
+})
 
 export default Canvas;
